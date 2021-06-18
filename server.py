@@ -13,10 +13,6 @@ class JsonEncoder(json.JSONEncoder):
     def default(self, o):
         return o.__dict__
 
-class Media:
-    pass
-    # might be a good idea to initialise state
-
 class User:
     __slots__ = ["name", "identifier", "art"]
     def __init__(self):
@@ -35,7 +31,14 @@ class Guild:
     def __init__(self, id: str):
         self.id = id
         self.users = {}
-        self.media_state = {}
+        self.media_state = {
+            "url": "",
+            "title": "",
+            "artist": "",
+            "album": "",
+            "art": "",
+            "queue_index": -1
+        }
         self.queue = []
     
     def media_state_event(self):
@@ -45,7 +48,7 @@ class Guild:
         return json.dumps({"type": "users", "count": len(self.users), "users": self.users.values()}, default=JsonEncoder)
     
     def queue_event(self):
-        return json.dumps({"type": "queue", "queue": self.queue}, default=JsonEncoder)
+        return json.dumps({"type": "queue", "queue": self.queue, "index": self.media_state["queue_index"]}, default=JsonEncoder)
     
     async def notify_media_state(self):
         # TODO: reorg functions so that there is much less redundancy
