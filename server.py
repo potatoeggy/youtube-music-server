@@ -48,12 +48,17 @@ class Guild:
         return json.dumps({"type": "queue", "queue": self.queue}, default=JsonEncoder)
     
     async def notify_media_state(self):
+        # TODO: reorg functions so that there is much less redundancy
         if self.users:
             await asyncio.wait([asyncio.create_task(u.send(self.media_state_event())) for u in self.users])
     
     async def notify_users(self):
         if self.users:
             await asyncio.wait([asyncio.create_task(u.send(self.users_event())) for u in self.users])
+    
+    async def notify_queue(self):
+        if self.users:
+            await asyncio.wait([asyncio.create_task(u.send(self.queue_event())) for u in self.users])
 
     async def register(self, websocket):
         self.users[websocket] = User()
