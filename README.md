@@ -104,7 +104,7 @@ Sample error:
 
 ## Sending actions
 
-There are seven currently defined actions for clients to send to the server via the websocket in JSON, defined by the `action` field.
+Requests sent to the server are determined by the mandatory `action` field via the websocket in JSON.
 
 ### Set the user profile
 
