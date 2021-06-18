@@ -45,6 +45,15 @@ class Guild:
             "queue_index": -1,
         }
         self.queue = []
+        # TODO: there are a couple of options to determine if a song ends
+        # 1. we can not process it ourselves, relying on clients to push
+        # a `jump` request which seems easiest - disregarding majority
+        # 2. we can time it ourselves and force all clients to push
+
+        # if we require clients, we can require a majority to say push
+        # or we can push when only one finishes
+        # or we can push only when all finish
+        # issue with the last one is that buffering can ruin the experience
 
     def media_state_event(self):
         return json.dumps({"type": "state", **self.media_state})
