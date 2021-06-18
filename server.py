@@ -4,7 +4,6 @@ import asyncio
 import logging
 import websockets
 import json
-import collections
 import ytmusicapi
 
 logging.basicConfig()
@@ -27,7 +26,7 @@ class Guild:
         self.queue = []
         # TODO: there are a couple of options to determine if a song ends
         # 1. we can not process it ourselves, relying on clients to push
-        # a `jump` request which seems easiest - disregarding majority
+        # a `finished` request which seems easiest - disregarding majority
         # 2. we can time it ourselves and force all clients to push
 
         # if we require clients, we can require a majority to say push
