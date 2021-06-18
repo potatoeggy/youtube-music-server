@@ -4,54 +4,96 @@ import asyncio
 import logging
 import websockets
 import json
+import collections
+import ytmusicapi
 
 logging.basicConfig()
 
-STATE = {"value": 0}
-USERS = set()
+class JsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        return o.__dict__
 
-def state_event():
-    return json.dumps({"type": "state", **STATE})
+class Media:
+    pass
+    # might be a good idea to initialise state
 
-def users_event():
-    return json.dumps({"type": "users", "count": len(USERS)})
+class User:
+    __slots__ = ["name", "identifier", "art"]
+    def __init__(self):
+        pass
 
-async def notify_state():
-    if USERS:
-        message = state_event()
-        await asyncio.wait([asyncio.create_task(user.send(message)) for user in USERS])
+    def set_info(self, name=None, identifier=None, art=None):
+        if name is not None:
+            self.name = name
+        if identifier is not None:
+            self.identifier = identifier
+        if art is not None:
+            self.art = art
 
-async def notify_users():
-    if USERS:
-        message = users_event()
-        await asyncio.wait([asyncio.create_task(user.send(message)) for user in USERS])
+class Guild:
+    __slots__ = ["media_state", "users", "queue", "id"]
+    def __init__(self, id: str):
+        self.id = id
+        self.users = {}
+        self.media_state = {}
+        self.queue = []
+    
+    def media_state_event(self):
+        return json.dumps({"type": "state", **self.media_state})
+    
+    def users_event(self):
+        return json.dumps({"type": "users", "count": len(self.users), "users": self.users.values()}, default=JsonEncoder)
+    
+    def queue_event(self):
+        return json.dumps({"type": "queue", "queue": self.queue}, default=JsonEncoder)
+    
+    async def notify_media_state(self):
+        if self.users:
+            await asyncio.wait([asyncio.create_task(u.send(self.media_state_event())) for u in self.users])
+    
+    async def notify_users(self):
+        if self.users:
+            await asyncio.wait([asyncio.create_task(u.send(self.users_event())) for u in self.users])
 
-async def register(websocket):
-    USERS.add(websocket)
-    await notify_users()
+    async def register(self, websocket):
+        self.users[websocket] = User()
+        await self.notify_users()
+        await websocket.send(self.media_state_event())
+    
+    async def unregister(self, websocket):
+        self.users.pop(websocket, None)
+        await self.notify_users()
 
-async def unregister(websocket):
-    USERS.remove(websocket)
-    await notify_users()
+guilds = {}
 
-async def counter(websocket, path):
+async def counter(websocket, path: str):
     # register(websocket) sends user_event() to websocket
-    await register(websocket)
-    print(path)
+    # TODO: consider copying Genshin's API system
+    guild_index: int = path.find("?guild=") + 7
+    if guild_index == 6:
+        # if the string was not found (-1)
+        await websocket.send({"type": "error", "error": "GuildError", "message": "Guild not specified in path."})
+        return
+    
+    guild_id: str = path[guild_index:]
+    
+    if not guild_id in guilds:
+        guilds[guild_id] = Guild(guild_id)
+    guild: Guild = guilds[guild_id]
+
     try:
-        await websocket.send(state_event())
+        await guild.register(websocket)
         async for message in websocket:
             data = json.loads(message)
-            if data["action"] == "minus":
-                STATE["value"] -= 1
-                await notify_state()
-            elif data["action"] == "plus":
-                STATE["value"] += 1
-                await notify_state()
-            else:
-                logging.error("unsupported event: %s", data)
+            try:
+                if True:
+                    pass
+                else:
+                    logging.error(f"unsupported event: {data}")
+            except KeyError:
+                logging.error(f"unsupported event: {data}")
     finally:
-        await unregister(websocket)
+        await guild.unregister(websocket)
 
 
 start_server = websockets.serve(
