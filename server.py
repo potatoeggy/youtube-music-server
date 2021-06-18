@@ -35,17 +35,17 @@ class Guild:
         # issue with the last one is that buffering can ruin the experience
 
     def media_state_event(self):
-        return json.dumps({"type": "state", **self.media_state})
+        return json.dumps({"event": "state", **self.media_state})
 
     def users_event(self):
         return json.dumps(
-            {"type": "users", "count": len(self.users), "users": self.users.values()}
+            {"event": "users", "count": len(self.users), "users": self.users.values()}
         )
 
     def queue_event(self):
         return json.dumps(
             {
-                "type": "queue",
+                "event": "queue",
                 "queue": self.queue,
                 "index": self.media_state["queue_index"],
             }
@@ -93,7 +93,7 @@ async def counter(websocket, path: str):
         # if the string was not found (-1)
         await websocket.send(
             {
-                "type": "error",
+                "event": "error",
                 "error": "GuildError",
                 "message": "Guild not specified in path.",
             }
