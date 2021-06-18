@@ -10,26 +10,6 @@ import ytmusicapi
 logging.basicConfig()
 
 
-class JsonEncoder(json.JSONEncoder):
-    def default(self, o):
-        return o.__dict__
-
-
-class User:
-    __slots__ = ["name", "identifier", "art"]
-
-    def __init__(self):
-        pass
-
-    def set_info(self, name=None, identifier=None, art=None):
-        if name is not None:
-            self.name = name
-        if identifier is not None:
-            self.identifier = identifier
-        if art is not None:
-            self.art = art
-
-
 class Guild:
     __slots__ = ["media_state", "users", "queue", "id"]
 
@@ -60,8 +40,7 @@ class Guild:
 
     def users_event(self):
         return json.dumps(
-            {"type": "users", "count": len(self.users), "users": self.users.values()},
-            default=JsonEncoder,
+            {"type": "users", "count": len(self.users), "users": self.users.values()}
         )
 
     def queue_event(self):
@@ -70,8 +49,7 @@ class Guild:
                 "type": "queue",
                 "queue": self.queue,
                 "index": self.media_state["queue_index"],
-            },
-            default=JsonEncoder,
+            }
         )
 
     async def notify_media_state(self):
@@ -97,7 +75,7 @@ class Guild:
             )
 
     async def register(self, websocket):
-        self.users[websocket] = User()
+        self.users[websocket] = {}
         await self.notify_users()
         await websocket.send(self.media_state_event())
 
