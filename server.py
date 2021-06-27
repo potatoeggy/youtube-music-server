@@ -25,6 +25,7 @@ class Guild:
             "playing": False,
             "queue_index": -1,
         }
+        self.finished = 0
         self.last_update_time = datetime.datetime.now()
         self.queue = []
 
@@ -48,8 +49,8 @@ class Guild:
     async def register(self, websocket):
         self.users[websocket] = {"id": hash(websocket)}
         await self.notify_all(self.users_event())
-        await websocket.send(self.media_state_event())
         await websocket.send(self.queue_event())
+        await websocket.send(self.media_state_event())
 
     async def unregister(self, websocket):
         self.users.pop(websocket, None)
@@ -107,8 +108,11 @@ class Guild:
                 ),
                 "art": song["thumbnails"][0]["url"],
             }
+        play_immediately = self.media_state["queue_index"] == len(self.queue) - 1
         self.queue.append(song_metadata)
         await self.notify_all(self.queue_event())
+        if play_immediately:
+            self.action_jump(websocket, {"index": 1})
 
     async def action_remove(self, websocket, index: int):
         assert type(index) == int
@@ -133,11 +137,9 @@ class Guild:
                     "IndexError", "The index provided is out of bounds of the queue."
                 )
             )
-        if (
-            not 0
-            <= time
-            <= self.queue[self.media_state["queue_index"] + data["index"]]["length"]
-        ):
+
+        video_index = self.media_state["queue_index"] + data["index"]
+        if not 0 <= time <= self.queue[video_index]["length"]:
             return await websocket.send(
                 error_event(
                     "TimeLimitExceededError",
@@ -145,9 +147,26 @@ class Guild:
                 )
             )
 
-        self.media_state["current_time"] = time
-        self.media_state["queue_index"] += data["index"]
+        self.finished = 0
+        self.media_state = {
+            "current_time": time,
+            "length": self.queue[video_index]["length"],
+            "playing": True,
+            "queue_index": video_index,
+        }
         await self.notify_all(self.media_state_event())
+
+    async def action_mark_finished(self, websocket):
+        self.finished += 1
+        # TODO: this is unreliable in case a user marks as finished and leaves
+        # before others finish
+        # also if a user spams a finished action
+        if self.finished == len(self.users):
+            self.finished = 0
+            if not self.media_state["queue_index"] == len(self.queue) - 1:
+                # if there are more items in the queue
+                self.action_jump(None, {"index": 1})
+            # otherwise do nothing
 
 
 guilds = {}
