@@ -27,7 +27,6 @@ class Guild:
         }
         self.last_update_time = datetime.datetime.now()
         self.queue = []
-        self.cur = -1
 
     def media_state_event(self, current_time: str = None) -> str:
         # TODO: if current_time is not none then set the time to current_time
@@ -65,21 +64,10 @@ class Guild:
         await self.notify_all(self.users_event())
 
     async def action_play_pause(self, websocket, playing: bool):
+        assert type(playing) == bool
+        # TODO: handle paused time when calculating current_time for new users
         self.media_state["playing"] = playing
         await self.notify_all(self.media_state_event())
-
-    async def action_seek(self, websocket, time: int):
-        assert type(time) == int
-        if 0 <= time <= self.media_state["length"]:
-            self.media_state["current_time"] = time
-            await self.notify_all(self.media_state_event())
-        else:
-            await websocket.send(
-                error_event(
-                    "TimeLimitExceededError",
-                    "The seek time specified is not a valid time in the video.",
-                )
-            )
 
     async def action_add(self, websocket, data: dict):
         assert "query" in data or "video_id" in data
@@ -87,7 +75,7 @@ class Guild:
             try:
                 song = ytmusic.get_song(data["video_id"])["videoDetails"]
             except KeyError:
-                return websocket.send(
+                return await websocket.send(
                     error_event(
                         "InvalidVideoError",
                         "The video ID provided was not a valid video.",
@@ -120,6 +108,44 @@ class Guild:
             }
         self.queue.append(song_metadata)
         await self.notify_all(self.queue_event())
+
+    async def action_remove(self, websocket, index: int):
+        assert type(index) == int
+        assert not index == 0
+        try:
+            del self.queue[index]
+        except IndexError:
+            await websocket.send(
+                error_event("IndexError", "The index provided is out of bounds.")
+            )
+
+    async def action_jump(self, websocket, data: dict):
+        assert type(data["index"]) == int
+        time: int = 0
+        if "time" in data:
+            assert type(data["time"]) == int
+            time = data["time"]
+        if not 0 <= self.media_state["queue_index"] + data["index"] < len(self.queue):
+            return await websocket.send(
+                error_event(
+                    "IndexError", "The index provided is out of bounds of the queue."
+                )
+            )
+        if (
+            not 0
+            <= time
+            <= self.queue[self.media_state["queue_index"] + data["index"]]["length"]
+        ):
+            return await websocket.send(
+                error_event(
+                    "TimeLimitExceededError",
+                    "The seek time specified is greater than the length of the video.",
+                )
+            )
+
+        self.media_state["current_time"] = time
+        self.media_state["queue_index"] += data["index"]
+        await self.notify_all(self.media_state_event())
 
 
 guilds = {}
@@ -159,9 +185,14 @@ async def counter(websocket, path: str):
                         error_event("RequestError", "Invalid action given.")
                     )
             except KeyError as e:
-                await websocket.send(error_event("RequestError", e))
+                await websocket.send(error_event("RequestError", "Malformed request."))
             except AssertionError as e:
                 await websocket.send(error_event("RequestError", "Malformed request."))
+            except Exception as e:
+                await websocket.send(
+                    error_event("Error", "An unexpected error occurred.")
+                )
+                logging.error(e)
 
     finally:
         await guild.unregister(websocket)

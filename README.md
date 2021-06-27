@@ -173,7 +173,7 @@ Sample request:
 
 ### Remove a video from the queue
 
-This action removes a video via an index in the queue, where `0` is the currently playing video.
+This action removes a video via an index in the queue, where `0` is the currently playing video. The currently playing video cannot be removed.
 
 Sample request:
 
