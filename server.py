@@ -7,11 +7,18 @@ import json
 import ytmusicapi
 import datetime
 
-logging.basicConfig()
+log = logging.getLogger("youtube-sync")
+log.setLevel(logging.DEBUG)
+log_handler = logging.StreamHandler()
+log_handler.setFormatter(
+    logging.Formatter("%(name)s %(asctime)s [%(levelname)s] %(message)s")
+)
+log.addHandler(log_handler)
 ytmusic = ytmusicapi.YTMusic()
 
 
 def error_event(error: str, message: str):
+    log.warn(f"Error while handling request: {error}: {message}")
     return json.dumps({"event": "error", "error": error, "message": message})
 
 
@@ -29,8 +36,10 @@ class Guild:
         self.last_update_time = datetime.datetime.now()
         self.was_paused = False
         self.queue = []
+        log.debug(f"Initialised guild {id}")
 
     def media_state_event(self) -> str:
+        log.debug("Media state event fired")
         # TODO: if current_time is not none then set the time to current_time
         # otherwise calculate current_time (max of len and now + last push) and push
         if self.media_state["playing"] and not self.was_paused:
@@ -43,11 +52,13 @@ class Guild:
         return json.dumps({"event": "state", **self.media_state})
 
     def users_event(self) -> str:
+        log.debug("User event fired")
         return json.dumps(
             {"event": "users", "count": len(self.users), "users": self.users.values()}
         )
 
     def queue_event(self) -> str:
+        log.debug("Queue event fired")
         return json.dumps({"event": "queue", "queue": self.queue})
 
     async def notify_all(self, msg: str):
@@ -56,12 +67,14 @@ class Guild:
 
     async def register(self, websocket):
         self.users[websocket] = {"id": hash(websocket)}
+        log.debug(f"New user of {len(self.users)} registered in guild {self.id}.")
         await self.notify_all(self.users_event())
         await websocket.send(self.queue_event())
         await websocket.send(self.media_state_event())
 
     async def unregister(self, websocket):
         self.users.pop(websocket, None)
+        log.debug(f"User disconnected in guild {self.id}, now {len(self.users)}.")
         await self.notify_all(self.users_event())
 
     async def action_set_profile(self, websocket, data: dict):
@@ -71,11 +84,13 @@ class Guild:
                 self.users[websocket][key] = data[key]
             else:
                 self.users[websocket].pop(key, None)
+        log.debug(f"Edited profile of user {self.users[websocket]['id']}.")
         await self.notify_all(self.users_event())
 
     async def action_play_pause(self, websocket, playing: bool):
         assert type(playing) == bool
         self.media_state["playing"] = playing
+        log.debug(f"Playback state set to {'playing' if playing else 'paused'}.")
         await self.notify_all(self.media_state_event())
 
     async def action_add(self, websocket, data: dict):
@@ -117,14 +132,19 @@ class Guild:
             }
         play_immediately = self.media_state["queue_index"] == len(self.queue) - 1
         self.queue.append(song_metadata)
+        log.debug(
+            f"Added {song_metadata['title']} ({song_metadata['url']}) to the queue"
+        )
         await self.notify_all(self.queue_event())
         if play_immediately:
+            log.debug("End of queue, playing newly added song immediately")
             self.action_jump(websocket, {"index": 1})
 
     async def action_remove(self, websocket, index: int):
         assert type(index) == int
         assert not index == 0
         try:
+            log.debug(f"Removing {self.queue[index]['title']} from the queue")
             del self.queue[index]
         except IndexError:
             return await websocket.send(
@@ -153,6 +173,7 @@ class Guild:
                     "The seek time specified is greater than the length of the video.",
                 )
             )
+        log.debug(f"Jumped to {self.queue[video_index]['title']}.")
 
         # reset internal state variables
         self.finished = 0
@@ -164,17 +185,21 @@ class Guild:
             "playing": True,
             "queue_index": video_index,
         }
+        log.debug("Reset internal state variables")
         await self.notify_all(self.media_state_event())
 
     async def action_mark_finished(self, websocket):
         self.finished += 1
+        log.debug(f"{self.finished} users finished of {len(users)}")
         # TODO: this is unreliable in case a user marks as finished and leaves
         # before others finish
         # also if a user spams a finished action
         if self.finished == len(self.users):
             self.finished = 0
+            log.debug("All users finished")
             if not self.media_state["queue_index"] == len(self.queue) - 1:
                 # if there are more items in the queue
+                log.debug("Jumping to next video")
                 self.action_jump(None, {"index": 1})
             # otherwise do nothing
 
@@ -233,17 +258,19 @@ async def counter(websocket, path: str):
                 await websocket.send(
                     error_event("Error", "An unexpected error occurred.")
                 )
-                logging.error(e)
+                log.error(e)
 
     finally:
         await guild.unregister(websocket)
         if not guild.users:
             # if the guild is empty, destroy it
             guilds.pop(guild_id)
+            log.debug(f"Popped guild {guild_id}")
 
 
 start_server = websockets.serve(counter, "localhost", 6789)
-logging.info("Setup complete!")
+log.info("Started websocket server")
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
+log.debug("Closed websocket")
