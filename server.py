@@ -27,6 +27,10 @@ class Guild:
         }
         self.finished = 0
         self.last_update_time = datetime.datetime.now()
+        # TODO: hook up last_update_time to all media_state_event changes
+        # TODO: add variable that calculates time spent playing that is
+        # always updated when last_update_time changes (via func?)
+        # TODO: calculate proper time on new user join
         self.queue = []
 
     def media_state_event(self, current_time: str = None) -> str:
@@ -233,6 +237,7 @@ async def counter(websocket, path: str):
 
 
 start_server = websockets.serve(counter, "localhost", 6789)
+logging.info("Setup complete!")
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
