@@ -41,27 +41,23 @@ Sample event:
 
 ### Media change
 
-This event is emitted to the current guild on initial join or when a seek or jump request is submitted. It sends details regarding the currently playing video. A link to the stream is provided via an embed link, and the time sent is the seconds elapsed since the start of the video. It is guaranteed to be smaller than the length of the video.
+This event is emitted to the current guild on initial join or when a seek or jump request is submitted. It sends details regarding the currently playing video.
 
 Sample event:
 
 ```json
 {
     "event": "media",
-    "url": "https://youtube.com/embed/xxxxxxx",
     "current_time": 100,
     "length": 250,
     "playing": true,
-    "title": "Baby Shark",
-    "artist": "Pinkfong",
-    "album": "Baby Shark",
-    "art": "https://i.ytimg.com/xxxxxx"
+    "queue_index": 3
 }
 ```
 
 ### Queue change
 
-This event is emitted to the current guild on initial join or when the current queue changes, including when entries are added/removed to/from the queue or the current index changes.
+This event is emitted to the current guild on initial join or when the current queue changes, such as when entries are added/removed to/from the queue.
 
 ```json
 {
@@ -176,14 +172,14 @@ Sample request:
 
 ### Add a video to the queue
 
-This action adds a video to the queue either via search query or embed/non-embed URL. If a URL is provided, it will take priority over a query.
+This action adds a video to the queue either via search query or embed/non-embed URL. If a video ID is provided, it will take priority over a query.
 
 Sample request:
 
 ```json
 {
-    "action": "add_media",
-    "url": "https://youtube.com/watch?xxxxxx",
+    "action": "add",
+    "video_id": "xxxxxx",
     "query": "baby shark"
 }
 ```
@@ -194,7 +190,7 @@ Sample request:
 {
     "event": "error",
     "error": "InvalidVideoError",
-    "message": "The video URL provided was not a valid video."
+    "message": "The video ID provided was not a valid video."
 }
 ```
 

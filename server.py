@@ -8,6 +8,7 @@ import ytmusicapi
 import datetime
 
 logging.basicConfig()
+ytmusic = ytmusicapi.YTMusic()
 
 
 def error_event(error: str, message: str):
@@ -19,11 +20,6 @@ class Guild:
         self.id = id
         self.users = {}
         self.media_state = {
-            "url": "",
-            "title": "",
-            "artist": "",
-            "album": "",
-            "art": "",
             "current_time": 0,
             "length": 0,
             "playing": False,
@@ -31,6 +27,7 @@ class Guild:
         }
         self.last_update_time = datetime.datetime.now()
         self.queue = []
+        self.cur = -1
 
     def media_state_event(self, current_time: str = None) -> str:
         # TODO: if current_time is not none then set the time to current_time
@@ -43,19 +40,11 @@ class Guild:
         )
 
     def queue_event(self) -> str:
-        return json.dumps(
-            {
-                "event": "queue",
-                "queue": self.queue,
-                "index": self.media_state["queue_index"],
-            }
-        )
+        return json.dumps({"event": "queue", "queue": self.queue})
 
-    async def notify_all(self, string: str):
+    async def notify_all(self, msg: str):
         if self.users:
-            await asyncio.wait(
-                [asyncio.create_task(u.send(string)) for u in self.users]
-            )
+            await asyncio.wait([asyncio.create_task(u.send(msg)) for u in self.users])
 
     async def register(self, websocket):
         self.users[websocket] = {"id": hash(websocket)}
@@ -80,8 +69,57 @@ class Guild:
         await self.notify_all(self.media_state_event())
 
     async def action_seek(self, websocket, time: int):
-        # TODO: implement
         assert type(time) == int
+        if 0 <= time <= self.media_state["length"]:
+            self.media_state["current_time"] = time
+            await self.notify_all(self.media_state_event())
+        else:
+            await websocket.send(
+                error_event(
+                    "TimeLimitExceededError",
+                    "The seek time specified is not a valid time in the video.",
+                )
+            )
+
+    async def action_add(self, websocket, data: dict):
+        assert "query" in data or "video_id" in data
+        if "url" in data:
+            try:
+                song = ytmusic.get_song(data["video_id"])["videoDetails"]
+            except KeyError:
+                return websocket.send(
+                    error_event(
+                        "InvalidVideoError",
+                        "The video ID provided was not a valid video.",
+                    )
+                )
+
+            song_metadata = {
+                "url": f"https://youtube.com/embed/{song['videoId']}",
+                "title": song["title"],
+                "artist": song["author"],
+                "length": int(song["lengthSeconds"]),
+                "art": song["thumbnails"][0]["url"],
+            }
+        else:
+            song = ytmusic.search(data["query"], "songs")[0]
+            # TODO: consider using "video" over "song" for greater
+            # but lower quality results as fallbacks
+
+            song_metadata = {
+                "url": f"https://youtube.com/embed/{song['videoId']}",
+                "title": song["title"],
+                "artist": ", ".join(a["name"] for a in song["artists"]),
+                "length": sum(
+                    i * int(p)
+                    for i, p in zip(
+                        [1, 60, 3600], reversed(song["duration"].split(":"))
+                    )
+                ),
+                "art": song["thumbnails"][0]["url"],
+            }
+        self.queue.append(song_metadata)
+        await self.notify_all(self.queue_event())
 
 
 guilds = {}
