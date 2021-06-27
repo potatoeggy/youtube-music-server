@@ -27,15 +27,19 @@ class Guild:
         }
         self.finished = 0
         self.last_update_time = datetime.datetime.now()
-        # TODO: hook up last_update_time to all media_state_event changes
-        # TODO: add variable that calculates time spent playing that is
-        # always updated when last_update_time changes (via func?)
-        # TODO: calculate proper time on new user join
+        self.was_paused = False
         self.queue = []
 
-    def media_state_event(self, current_time: str = None) -> str:
+    def media_state_event(self) -> str:
         # TODO: if current_time is not none then set the time to current_time
         # otherwise calculate current_time (max of len and now + last push) and push
+        if self.media_state["playing"] and not self.was_paused:
+            self.media_state["current_time"] = min(
+                (datetime.datetime.now() - self.last_update_time).total_seconds(),
+                self.media_state["length"],
+            )
+        self.was_paused = self.media_state["playing"]
+        self.last_update_time = datetime.datetime.now()
         return json.dumps({"event": "state", **self.media_state})
 
     def users_event(self) -> str:
@@ -71,7 +75,6 @@ class Guild:
 
     async def action_play_pause(self, websocket, playing: bool):
         assert type(playing) == bool
-        # TODO: handle paused time when calculating current_time for new users
         self.media_state["playing"] = playing
         await self.notify_all(self.media_state_event())
 
@@ -151,7 +154,10 @@ class Guild:
                 )
             )
 
+        # reset internal state variables
         self.finished = 0
+        self.time_paused = 0
+        self.was_paused = False
         self.media_state = {
             "current_time": time,
             "length": self.queue[video_index]["length"],
