@@ -49,6 +49,7 @@ class Guild:
         self.users[websocket] = {"id": hash(websocket)}
         await self.notify_all(self.users_event())
         await websocket.send(self.media_state_event())
+        await websocket.send(self.queue_event())
 
     async def unregister(self, websocket):
         self.users.pop(websocket, None)
@@ -115,9 +116,10 @@ class Guild:
         try:
             del self.queue[index]
         except IndexError:
-            await websocket.send(
+            return await websocket.send(
                 error_event("IndexError", "The index provided is out of bounds.")
             )
+        await self.notify_all(self.queue_event())
 
     async def action_jump(self, websocket, data: dict):
         assert type(data["index"]) == int
