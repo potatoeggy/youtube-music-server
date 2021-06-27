@@ -147,29 +147,6 @@ Sample request:
 }
 ```
 
-### Seek to a time in the current video
-
-This action is used to tell all other players to seek to a certain timestamp in the video, represented in the number of seconds since the beginning of the video. It cannot exceed the length of the video.
-
-Sample request:
-
-```json
-{
-    "action": "seek",
-    "time": 100
-}
-```
-
-**Error response: `TimeLimitExceededError`**
-
-```json
-{
-    "event": "error",
-    "error": "TimeLimitExceededError",
-    "message": "The seek time specified is greater than the length of the video."
-}
-```
-
 ### Add a video to the queue
 
 This action adds a video to the queue either via search query or embed/non-embed URL. If a video ID is provided, it will take priority over a query.
@@ -202,7 +179,7 @@ Sample request:
 
 ```json
 {
-    "action": "remove_media",
+    "action": "remove",
     "index": 1
 }
 ```
