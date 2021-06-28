@@ -230,10 +230,10 @@ async def counter(websocket, path: str):
     try:
         await guild.register(websocket)
         async for message in websocket:
-            data = json.loads(message)
             try:
+                data = json.loads(message)
                 action = data["action"]
-            except KeyError:
+            except KeyError or json.JSONDecodeError:
                 await websocket.send(error_event("RequestError", "No action given."))
                 continue
 
