@@ -43,8 +43,11 @@ class Guild:
         # TODO: if current_time is not none then set the time to current_time
         # otherwise calculate current_time (max of len and now + last push) and push
         if self.media_state["playing"] and not self.was_paused:
-            self.media_state["current_time"] += min(
-                int((datetime.datetime.now() - self.last_update_time).total_seconds()),
+            self.media_state["current_time"] = min(
+                self.media_state["current_time"]
+                + int(
+                    (datetime.datetime.now() - self.last_update_time).total_seconds()
+                ),
                 self.media_state["length"],
             )
         self.was_paused = not self.media_state["playing"]
