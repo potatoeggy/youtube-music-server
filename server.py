@@ -233,7 +233,7 @@ async def counter(websocket, path: str):
             try:
                 data = json.loads(message)
                 action = data["action"]
-            except KeyError or json.JSONDecodeError:
+            except KeyError or json.decoder.JSONDecodeError:
                 await websocket.send(error_event("RequestError", "No action given."))
                 continue
 
