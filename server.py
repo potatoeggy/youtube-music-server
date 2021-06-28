@@ -239,17 +239,17 @@ async def counter(websocket, path: str):
 
             try:
                 if action == "set_profile":
-                    guild.action_set_profile(websocket, data)
+                    await guild.action_set_profile(websocket, data)
                 elif action == "play" or action == "pause":
-                    guild.action_play_pause(websocket, action == "play")
+                    await guild.action_play_pause(websocket, action == "play")
                 elif action == "add":
-                    guild.action_add(websocket, data)
+                    await guild.action_add(websocket, data)
                 elif action == "remove":
-                    guild.action_remove(websocket, data["index"])
+                    await guild.action_remove(websocket, data["index"])
                 elif action == "jump":
-                    guild.action_jump(websocket, data)
+                    await guild.action_jump(websocket, data)
                 elif action == "finished":
-                    guild.action_mark_finished(websocket)
+                    await guild.action_mark_finished(websocket)
                 else:
                     await websocket.send(
                         error_event("RequestError", "Invalid action given.")
