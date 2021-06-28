@@ -44,10 +44,10 @@ class Guild:
         # otherwise calculate current_time (max of len and now + last push) and push
         if self.media_state["playing"] and not self.was_paused:
             self.media_state["current_time"] = min(
-                (datetime.datetime.now() - self.last_update_time).total_seconds(),
+                int((datetime.datetime.now() - self.last_update_time).total_seconds()),
                 self.media_state["length"],
             )
-        self.was_paused = self.media_state["playing"]
+        self.was_paused = not self.media_state["playing"]
         self.last_update_time = datetime.datetime.now()
         return json.dumps({"event": "state", **self.media_state})
 
