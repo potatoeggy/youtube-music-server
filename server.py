@@ -32,7 +32,6 @@ class Guild:
             "playing": False,
             "queue_index": -1,
         }
-        self.finished = 0
         self.last_update_time = datetime.datetime.now()
         self.was_paused = False
         self.queue = []
@@ -74,7 +73,7 @@ class Guild:
             await asyncio.wait([asyncio.create_task(u.send(msg)) for u in self.users])
 
     async def register(self, websocket):
-        self.users[websocket] = {"id": hash(websocket)}
+        self.users[websocket] = {"id": hash(websocket), "finished": True}
         log.debug(
             f"New user with id {hash(websocket)} (now {len(self.users)} total) registered in guild {self.id}."
         )
@@ -201,7 +200,8 @@ class Guild:
         )
 
         # reset internal state variables
-        self.finished = 0
+        for u in self.users:
+            self.users[u]["finished"] = False
         self.time_paused = 0
         self.last_update_time = datetime.datetime.now()
         self.media_state = {
@@ -214,15 +214,13 @@ class Guild:
         await self.notify_all(self.media_state_event())
 
     async def action_mark_finished(self, websocket):
-        self.finished += 1
+        self.users[websocket]["finished"] = True
         log.debug(
-            f"User id {hash(websocket)} finished current video, {len(self.users)-self.finished} left"
+            f"User id {hash(websocket)} finished current video, {len(self.users)-sum(self.users[u]['finished'] for u in self.users)} left"
         )
-        # TODO: this is unreliable in case a user marks as finished and leaves
-        # before others finish
-        # also if a user spams a finished action
-        if self.finished == len(self.users):
-            self.finished = 0
+        if sum(self.users[u]["finished"] for u in self.users) == len(self.users):
+            for u in self.users:
+                self.users[u]["finished"] = False
             log.debug("All users finished")
             if not self.media_state["queue_index"] == len(self.queue) - 1:
                 # if there are more items in the queue
