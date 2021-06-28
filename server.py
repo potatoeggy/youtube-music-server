@@ -142,7 +142,7 @@ class Guild:
         await self.notify_all(self.queue_event())
         if play_immediately:
             log.debug("End of queue, playing newly added song immediately")
-            self.action_jump(websocket, {"index": 1})
+            await self.action_jump(websocket, {"index": 1})
 
     async def action_remove(self, websocket, index: int):
         assert type(index) == int
@@ -204,7 +204,7 @@ class Guild:
             if not self.media_state["queue_index"] == len(self.queue) - 1:
                 # if there are more items in the queue
                 log.debug("Jumping to next video")
-                self.action_jump(None, {"index": 1})
+                await self.action_jump(None, {"index": 1})
             # otherwise do nothing
 
 
