@@ -38,10 +38,7 @@ class Guild:
         self.queue = []
         log.debug(f"Initialised guild {id}")
 
-    def media_state_event(self) -> str:
-        log.debug("Media state event fired")
-        # TODO: if current_time is not none then set the time to current_time
-        # otherwise calculate current_time (max of len and now + last push) and push
+    def update_media_state_time(self):
         if self.media_state["playing"] and not self.was_paused:
             self.media_state["current_time"] = min(
                 self.media_state["current_time"]
@@ -52,6 +49,10 @@ class Guild:
             )
         self.was_paused = not self.media_state["playing"]
         self.last_update_time = datetime.datetime.now()
+
+    def media_state_event(self) -> str:
+        log.debug("Media state event fired")
+        self.update_media_state_time()
         return json.dumps({"event": "state", **self.media_state})
 
     def users_event(self) -> str:
@@ -143,7 +144,14 @@ class Guild:
                 ),
                 "art": song["thumbnails"][0]["url"],
             }
-        play_immediately = self.media_state["queue_index"] == len(self.queue) - 1
+
+        # play immediately only if we're on last song and (internally) song has ended
+        self.update_media_state_time()
+        play_immediately = (
+            self.media_state["queue_index"] == len(self.queue) - 1
+            and self.media_state["current_time"] == self.media_state["length"]
+        )
+
         self.queue.append(song_metadata)
         log.debug(
             f"User id {hash(websocket)} added {song_metadata['title']} ({song_metadata['url']}) to the queue"
