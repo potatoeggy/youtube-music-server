@@ -54,7 +54,11 @@ class Guild:
     def users_event(self) -> str:
         log.debug("User event fired")
         return json.dumps(
-            {"event": "users", "count": len(self.users), "users": self.users.values()}
+            {
+                "event": "users",
+                "count": len(self.users),
+                "users": list(self.users.values()),
+            }
         )
 
     def queue_event(self) -> str:
