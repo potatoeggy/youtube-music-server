@@ -43,7 +43,7 @@ class Guild:
         # TODO: if current_time is not none then set the time to current_time
         # otherwise calculate current_time (max of len and now + last push) and push
         if self.media_state["playing"] and not self.was_paused:
-            self.media_state["current_time"] = min(
+            self.media_state["current_time"] += min(
                 int((datetime.datetime.now() - self.last_update_time).total_seconds()),
                 self.media_state["length"],
             )
@@ -192,7 +192,7 @@ class Guild:
         # reset internal state variables
         self.finished = 0
         self.time_paused = 0
-        self.was_paused = False
+        self.last_update_time = datetime.datetime.now()
         self.media_state = {
             "current_time": time,
             "length": self.queue[video_index]["length"],
