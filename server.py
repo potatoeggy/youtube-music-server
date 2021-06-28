@@ -18,7 +18,7 @@ ytmusic = ytmusicapi.YTMusic()
 
 
 def error_event(error: str, message: str):
-    log.warn(f"Error while handling request: {error}: {message}")
+    log.warning(f"Error while handling request: {error}: {message}")
     return json.dumps({"event": "error", "error": error, "message": message})
 
 
