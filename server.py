@@ -194,7 +194,7 @@ class Guild:
 
     async def action_mark_finished(self, websocket):
         self.finished += 1
-        log.debug(f"{self.finished} users finished of {len(users)}")
+        log.debug(f"{self.finished} users finished of {len(self.users)}")
         # TODO: this is unreliable in case a user marks as finished and leaves
         # before others finish
         # also if a user spams a finished action
