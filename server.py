@@ -71,14 +71,18 @@ class Guild:
 
     async def register(self, websocket):
         self.users[websocket] = {"id": hash(websocket)}
-        log.debug(f"New user of {len(self.users)} registered in guild {self.id}.")
+        log.debug(
+            f"New user with id {hash(websocket)} (now {len(self.users)} total) registered in guild {self.id}."
+        )
         await self.notify_all(self.users_event())
         await websocket.send(self.queue_event())
         await websocket.send(self.media_state_event())
 
     async def unregister(self, websocket):
         self.users.pop(websocket, None)
-        log.debug(f"User disconnected in guild {self.id}, now {len(self.users)}.")
+        log.debug(
+            f"User id {hash(websocket)} disconnected in guild {self.id}, now {len(self.users)}."
+        )
         await self.notify_all(self.users_event())
 
     async def action_set_profile(self, websocket, data: dict):
@@ -88,13 +92,15 @@ class Guild:
                 self.users[websocket][key] = data[key]
             else:
                 self.users[websocket].pop(key, None)
-        log.debug(f"Edited profile of user {self.users[websocket]['id']}.")
+        log.debug(f"Edited profile of user id {hash(websocket)}.")
         await self.notify_all(self.users_event())
 
     async def action_play_pause(self, websocket, playing: bool):
         assert type(playing) == bool
         self.media_state["playing"] = playing
-        log.debug(f"Playback state set to {'playing' if playing else 'paused'}.")
+        log.debug(
+            f"Playback state set to {'playing' if playing else 'paused'} by user id {hash(websocket)}."
+        )
         await self.notify_all(self.media_state_event())
 
     async def action_add(self, websocket, data: dict):
@@ -137,7 +143,7 @@ class Guild:
         play_immediately = self.media_state["queue_index"] == len(self.queue) - 1
         self.queue.append(song_metadata)
         log.debug(
-            f"Added {song_metadata['title']} ({song_metadata['url']}) to the queue"
+            f"User id {hash(websocket)} added {song_metadata['title']} ({song_metadata['url']}) to the queue"
         )
         await self.notify_all(self.queue_event())
         if play_immediately:
@@ -148,7 +154,9 @@ class Guild:
         assert type(index) == int
         assert not index == 0
         try:
-            log.debug(f"Removing {self.queue[index]['title']} from the queue")
+            log.debug(
+                f"User id {hash(websocket)} removed {self.queue[index]['title']} (index {index}) from the queue"
+            )
             del self.queue[index]
         except IndexError:
             return await websocket.send(
@@ -177,7 +185,9 @@ class Guild:
                     "The seek time specified is greater than the length of the video.",
                 )
             )
-        log.debug(f"Jumped to {self.queue[video_index]['title']}.")
+        log.debug(
+            f"User id {hash(websocket)} jumped to {self.queue[video_index]['title']}."
+        )
 
         # reset internal state variables
         self.finished = 0
@@ -194,7 +204,9 @@ class Guild:
 
     async def action_mark_finished(self, websocket):
         self.finished += 1
-        log.debug(f"{self.finished} users finished of {len(self.users)}")
+        log.debug(
+            f"User id {hash(websocket)} finished current video, {len(self.users)-self.finished} left"
+        )
         # TODO: this is unreliable in case a user marks as finished and leaves
         # before others finish
         # also if a user spams a finished action
