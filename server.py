@@ -11,7 +11,7 @@ log = logging.getLogger("youtube-sync")
 log.setLevel(logging.DEBUG)
 log_handler = logging.StreamHandler()
 log_handler.setFormatter(
-    logging.Formatter("%(name)s %(asctime)s [%(levelname)s] %(message)s")
+    logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
 )
 log.addHandler(log_handler)
 ytmusic = ytmusicapi.YTMusic()
